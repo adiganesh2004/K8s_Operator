@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: worker
-        image: your-dockerhub-username/mongodb-keda-worker:latest
+        image: adiganesh2004/mongodb-keda-worker:latest
         env:
         - name: MONGODB_URI
           valueFrom:
@@ -22,6 +22,6 @@ spec:
               name: mongo-secret
               key: uri
         - name: MONGO_DB
-          value: "mydb"
+          value: "Mydb"
         - name: MONGO_COLLECTION
           value: "rawdata_queue"

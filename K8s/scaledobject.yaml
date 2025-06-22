@@ -7,13 +7,15 @@ spec:
     name: rawdata-worker
   pollingInterval: 15        # seconds
   cooldownPeriod: 60         # seconds
-  minReplicaCount: 0
+  minReplicaCount: 2
   maxReplicaCount: 10
   triggers:
   - type: mongodb
     metadata:
-      uri: mongodb://<username>:<password>@<external-mongo-host>:27017
-      dbName: mydb
+      dbName: Mydb
       collection: rawdata_queue
       query: '{ "status": "unprocessed" }'
-      value: "5"  # Scale up if > 5 unprocessed records
+      queryValue: "5"  # Scale up if > 5 unprocessed records
+    authenticationRef:
+      name: mongo-trigger-auth
+
