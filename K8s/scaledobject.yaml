@@ -1,0 +1,19 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rawdata-worker-scaler
+spec:
+  scaleTargetRef:
+    name: rawdata-worker
+  pollingInterval: 15        # seconds
+  cooldownPeriod: 60         # seconds
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  triggers:
+  - type: mongodb
+    metadata:
+      uri: mongodb://<username>:<password>@<external-mongo-host>:27017
+      dbName: mydb
+      collection: rawdata_queue
+      query: '{ "status": "unprocessed" }'
+      value: "5"  # Scale up if > 5 unprocessed records

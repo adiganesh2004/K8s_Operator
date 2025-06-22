@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rawdata-worker
+spec:
+  replicas: 0  # Let KEDA handle scaling
+  selector:
+    matchLabels:
+      app: rawdata-worker
+  template:
+    metadata:
+      labels:
+        app: rawdata-worker
+    spec:
+      containers:
+      - name: worker
+        image: your-dockerhub-username/mongodb-keda-worker:latest
+        env:
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: uri
+        - name: MONGO_DB
+          value: "mydb"
+        - name: MONGO_COLLECTION
+          value: "rawdata_queue"
