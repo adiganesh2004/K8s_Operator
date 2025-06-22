@@ -1,0 +1,8 @@
+# Ignore sensitive Kubernetes secrets
+mongo-secret.yaml
+
+# Ignore all `.log` files
+*.log
+
+# Ignore temporary files
+*.tmp
