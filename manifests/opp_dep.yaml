@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-operator
+  template:
+    metadata:
+      labels:
+        app: mongo-operator
+    spec:
+      serviceAccountName: kopf-operator
+      containers:
+      - name: operator
+        image: mongo-operator:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MONGO_URI
+          value: "your_mongo_uri"
+        - name: MONGO_DB
+          value: "testdb"
+        - name: MONGO_COLLECTION
+          value: "records"
+        - name: WORKER_IMAGE
+          value: "mongo-worker:latest"
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace

@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-worker-manual
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: mongo-worker
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: worker
+        image: mongo-worker:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MONGO_URI
+          value: "your_mongo_uri"
+        - name: MONGO_DB
+          value: "testdb"
+        - name: MONGO_COLLECTION
+          value: "records"

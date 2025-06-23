@@ -1,0 +1,6 @@
+# manifests/operator-serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kopf-operator
+  namespace: default
