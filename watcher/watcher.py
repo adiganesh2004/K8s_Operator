@@ -1,6 +1,6 @@
 # watcher.py
 import time
-from pymongo import MongoClient
+from pymongo import MongoClient, errors
 from kubernetes import client, config
 import uuid
 
@@ -10,9 +10,19 @@ config.load_incluster_config()
 # Set up Kubernetes API
 api = client.CustomObjectsApi()
 
-# Connect to MongoDB
-mongo_url = 'mongodb://mongodb-service:27017'
-client = MongoClient(mongo_url)
+# MongoDB connection string
+mongo_url = 'mongodb+srv://adityagps201011:Raji13579@cluster0.cvzrzm3.mongodb.net/'
+
+# Attempt to connect to MongoDB
+try:
+    client = MongoClient(mongo_url, serverSelectionTimeoutMS=5000)  # 5 seconds timeout
+    client.admin.command('ping')  # Force connection check
+    print("Successfully connected to MongoDB.")
+except errors.ServerSelectionTimeoutError as e:
+    print(f"Failed to connect to MongoDB: {e}")
+    exit(1)  # Exit if MongoDB is unreachable
+
+# Get database and collection
 db = client['rawdata']
 collection = db['queue']
 
@@ -50,8 +60,8 @@ while True:
                     plural="mongodbqueues",
                     body=body
                 )
-                print(f"Created MongoDBQueue CR for record ID: {doc_id}")
+                print(f"✅ Created MongoDBQueue CR for record ID: {doc_id}")
             except Exception as e:
-                print(f"Error creating CR for {doc_id}: {e}")
+                print(f"❌ Error creating CR for {doc_id}: {e}")
 
-    time.sleep(5)  # Adjust based on desired polling frequency
+    time.sleep(5)  # Adjust polling frequency as needed

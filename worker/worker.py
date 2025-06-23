@@ -1,7 +1,7 @@
 import os
 import pymongo
 
-mongo_url = os.getenv("MONGO_URL", "mongodb://mongodb-service:27017/")
+mongo_url = os.getenv("MONGO_URL", "mongodb+srv://adityagps201011:Raji13579@cluster0.cvzrzm3.mongodb.net/")
 try:
     client = pymongo.MongoClient(mongo_url, serverSelectionTimeoutMS=3000)
     client.server_info()  # Force a call to check connection

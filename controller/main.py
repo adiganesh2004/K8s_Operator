@@ -32,7 +32,7 @@ def create_worker_job(spec, name, namespace, **kwargs):
                         'image': 'adiganesh2004/worker-app:latest',  # Replace with your image
                         'env': [{
                             'name': 'MONGO_URL',
-                            'value': 'mongodb://mongodb-service:27017'  # Replace if different
+                            'value': 'mongodb+srv://adityagps201011:Raji13579@cluster0.cvzrzm3.mongodb.net/'  # Replace if different
                         }]
                     }],
                     'restartPolicy': 'Never'
