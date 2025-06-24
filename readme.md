@@ -31,3 +31,8 @@ db.records.insertOne({
     "message": "Hello from Citi!"
   }
 })
+
+**Architecture**
+
+![K8s_operator(2)](https://github.com/user-attachments/assets/7ebfebe4-ff5d-4cb1-898c-77fc1d78bf19)
+
