@@ -11,7 +11,10 @@ batch_api = kubernetes.client.BatchV1Api()
 # Register a handler for when a MongoDBQueue resource is created
 @kopf.on.create('yourdomain.com', 'v1', 'mongodbqueues')
 def create_worker_job(spec, name, namespace, **kwargs):
-    # Define a Job manifest
+    record_id = spec.get("recordId")
+    if not record_id:
+        raise kopf.TemporaryError("Missing recordId in spec", delay=10)
+
     job_manifest = {
         'apiVersion': 'batch/v1',
         'kind': 'Job',
@@ -29,11 +32,11 @@ def create_worker_job(spec, name, namespace, **kwargs):
                 'spec': {
                     'containers': [{
                         'name': 'worker',
-                        'image': 'adiganesh2004/worker-app:latest',  # Replace with your image
-                        'env': [{
-                            'name': 'MONGO_URL',
-                            'value': 'mongodb+srv://adityagps201011:Raji13579@cluster0.cvzrzm3.mongodb.net/'  # Replace if different
-                        }]
+                        'image': 'adiganesh2004/worker-app:latest',
+                        'env': [
+                            {'name': 'MONGO_URL', 'value': 'mongodb://mongodb-service:27017'},
+                            {'name': 'RECORD_ID', 'value': record_id}
+                        ]
                     }],
                     'restartPolicy': 'Never'
                 }
@@ -42,8 +45,6 @@ def create_worker_job(spec, name, namespace, **kwargs):
         }
     }
 
-    # Create the Job in the same namespace
     batch_api.create_namespaced_job(namespace=namespace, body=job_manifest)
+    kopf.info(body=job_manifest, reason='JobCreated', message=f"Created worker job for recordId: {record_id}")
 
-    # Log success via Kopf
-    kopf.info(body=job_manifest, reason='JobCreated', message=f"Created worker job for MongoDBQueue: {name}")
