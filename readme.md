@@ -10,17 +10,18 @@ retry functionality still needs to be implemented
 mapping - 1 record --- 1 job 
 
 #passing the mongo uri from the operator to the job can be skipped.
+
 basic explanation
 
-mongo_scaler_operator looks for change in db every x seconds (x can be changed from line 55)
-                        |
-if records are pushed it will start equivalent number of jobs 
-                        |
-each job spans a pod which runs the worker image
-                        |
-the image self claims an unfinished task by updating the flag (atomic)
-                        |
-the image does the processing and exits
+- mongo_scaler_operator looks for change in db every x seconds (x can be changed from line 55)
+-                         |
+- if records are pushed it will start equivalent number of jobs 
+-                        |
+- each job spans a pod which runs the worker image
+-                        |
+- the image self claims an unfinished task by updating the flag (atomic)
+-                        |
+- the image does the processing and exits
 
 
 #example entry
