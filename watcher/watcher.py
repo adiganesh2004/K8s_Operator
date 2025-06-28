@@ -11,7 +11,7 @@ config.load_incluster_config()
 api = client.CustomObjectsApi()
 
 # MongoDB connection string
-mongo_url = 'mongodb+srv://adityagps201011:Raji13579@cluster0.cvzrzm3.mongodb.net/'
+mongo_url = ''
 
 # Attempt to connect to MongoDB
 try:
