@@ -27,7 +27,8 @@ For every new MongoDBQueue resource, a temporary Job is created. This Job:
 -Terminates after processing is complete
 
 
-![Custom-Operator](https://github.com/user-attachments/assets/aff85aef-e29c-4063-8ddb-516c8bfbf1a2)
+![Updated_operator(1)](https://github.com/user-attachments/assets/00c185f0-0e8d-4eb6-9e63-32df1f76d6e9)
+
 
 **Future Improvements:**
 
