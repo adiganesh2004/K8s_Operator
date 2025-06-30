@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: watcher
   namespace: rawdata
+  labels:
+    app: watcher
 spec:
   replicas: 1
   selector:
@@ -15,15 +17,15 @@ spec:
     spec:
       serviceAccountName: watcher-sa
       containers:
-      - name: watcher
-        image: adiganesh2004/watcher:latest  # Replace with your DockerHub username and tag
-        env:
-        - name: MONGO_URL
-          value: "mongodb://mongodb-service:27017"
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: PYTHONUNBUFFERED
-          value: "1"
-        imagePullPolicy: Always
+        - name: watcher
+          image: adiganesh2004/watcher:latest  # Replace with your actual image tag if versioned
+          imagePullPolicy: Always
+          env:
+            - name: MONGO_URL
+              value: "mongodb://mongodb-service:27017"
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: PYTHONUNBUFFERED
+              value: "1"

@@ -2,19 +2,31 @@ import kopf
 import kubernetes
 import os
 
-# Load in-cluster Kubernetes configuration so the operator can interact with the API
+# Load Kubernetes configuration from within the cluster
 kubernetes.config.load_incluster_config()
 
-# Create a Kubernetes Batch API client to create Job resources
+# Initialize the Kubernetes Batch API client (used to create Job resources)
 batch_api = kubernetes.client.BatchV1Api()
 
-# Register a handler for when a MongoDBQueue resource is created
+# Handler triggered when a MongoDBQueue custom resource is created
 @kopf.on.create('yourdomain.com', 'v1', 'mongodbqueues')
 def create_worker_job(spec, name, namespace, **kwargs):
-    record_id = spec.get("recordId")
-    if not record_id:
-        raise kopf.TemporaryError("Missing recordId in spec", delay=10)
+    """
+    Create a Kubernetes Job to process a batch of MongoDB record IDs
+    when a MongoDBQueue custom resource is created.
+    """
 
+    # Extract the list of MongoDB record IDs from the CR spec
+    record_ids = spec.get("recordIds")
+
+    # Validate that recordIds is a non-empty list
+    if not record_ids or not isinstance(record_ids, list):
+        raise kopf.TemporaryError("Missing or invalid 'recordIds' in spec", delay=10)
+
+    # Convert the list of record IDs to a comma-separated string
+    record_ids_str = ','.join(record_ids)
+
+    # Define the Kubernetes Job manifest
     job_manifest = {
         'apiVersion': 'batch/v1',
         'kind': 'Job',
@@ -35,7 +47,7 @@ def create_worker_job(spec, name, namespace, **kwargs):
                         'image': 'adiganesh2004/worker-app:latest',
                         'env': [
                             {'name': 'MONGO_URL', 'value': 'mongodb://mongodb-service:27017'},
-                            {'name': 'RECORD_ID', 'value': record_id}
+                            {'name': 'RECORD_IDS', 'value': record_ids_str}
                         ]
                     }],
                     'restartPolicy': 'Never'
@@ -45,6 +57,23 @@ def create_worker_job(spec, name, namespace, **kwargs):
         }
     }
 
-    batch_api.create_namespaced_job(namespace=namespace, body=job_manifest)
-    kopf.info(body=job_manifest, reason='JobCreated', message=f"Created worker job for recordId: {record_id}")
+    # Attempt to create the Job in Kubernetes
+    try:
+        batch_api.create_namespaced_job(namespace=namespace, body=job_manifest)
 
+        # Log success using Kopf
+        kopf.info(
+            body=job_manifest,
+            reason='JobCreated',
+            message=f"Worker job created for recordIds: {record_ids}"
+        )
+
+        print(f"Job 'worker-job-{name}' created in namespace '{namespace}' for IDs: {record_ids}")
+
+    except kubernetes.client.exceptions.ApiException as api_error:
+        # Log failure and raise a retryable error
+        error_message = (
+            f"Failed to create Job 'worker-job-{name}' in namespace '{namespace}': {api_error.reason}"
+        )
+        print(error_message)
+        raise kopf.TemporaryError(error_message, delay=15)

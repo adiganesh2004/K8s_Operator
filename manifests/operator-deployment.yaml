@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: rawdata-operator
   namespace: rawdata
+  labels:
+    app: rawdata-operator
 spec:
   replicas: 1
   selector:
@@ -13,8 +15,8 @@ spec:
       labels:
         app: rawdata-operator
     spec:
-      serviceAccountName: operator-sa
+      serviceAccountName: mongodbqueue-operator-sa
       containers:
         - name: operator
-          image: adiganesh2004/rawdata-operator:1.1     # <-- your Docker Hub image
+          image: adiganesh2004/rawdata-operator:1.1  # Replace with latest tag as needed
           imagePullPolicy: Always
