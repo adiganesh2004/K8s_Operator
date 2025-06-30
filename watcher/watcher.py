@@ -9,7 +9,6 @@ config.load_incluster_config()
 # Initialize Kubernetes CustomObjects API
 custom_api = client.CustomObjectsApi()
 
-<<<<<<< HEAD
 # MongoDB connection URI (service name inside the cluster)
 mongo_uri = 'mongodb://mongodb-service:27017'
 
