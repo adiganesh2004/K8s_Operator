@@ -1,0 +1,13 @@
+ FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install -r requirements.txt
+
+# Copy app code
+COPY worker_log.py .
+
+# Run the app
+CMD ["python", "worker_log.py"]
