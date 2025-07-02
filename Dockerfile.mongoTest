@@ -1,0 +1,14 @@
+# Use official lightweight Python image
+FROM python:3.11-slim
+
+# Set working directory inside the container
+WORKDIR /app
+
+# Copy your Python app files
+COPY mongo-test.py .
+
+# Install required dependencies
+RUN pip install --no-cache-dir pymongo
+
+# Run the app
+CMD ["python", "mongo-test.py"]
