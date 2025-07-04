@@ -33,4 +33,4 @@ For every new MongoDBQueue resource, a temporary Job is created. This Job:
 **Future Improvements:**
 
 
-The current setup creates Jobs as needed, but it doesn't control how many run at the same time. In the future, the Operator can be improved to always keep at least 3 Jobs running and limit the maximum to 10 based on the load. Also, instead of using short-lived Jobs, we could switch to long-running Pods or Deployments that keep checking MongoDB and processing tasks without restarting each time.
+The current setup creates Jobs as needed, but it doesn't control how many run at the same time. In the future, the Operator can be improved to always keep at least 3 Jobs running and limit the maximum to 10 based on the load. Also, instead of using short-lived Jobs, we could switch to long-running Pods or Deployments that keep checking MongoDB and processing tasks without restarting each time
