@@ -86,7 +86,22 @@ def assign_and_spawn_worker(record):
                         client.V1EnvVar(name="MONGO_URI", value=MONGO_URI),
                         client.V1EnvVar(name="MONGO_DB", value=DB_NAME),
                         client.V1EnvVar(name="MONGO_COLLECTION", value=COLLECTION_NAME),
-                    ]
+                    ],
+                     volume_mounts=[
+                    client.V1VolumeMount(
+                        name="secret-volume",
+                        mount_path="/app/secret",   # Path inside container
+                        read_only=True
+                    )
+                ]
+            )
+        ],
+        volumes=[
+            client.V1Volume(
+                name="secret-volume",
+                secret=client.V1SecretVolumeSource(
+                    secret_name="my-secret-name"  # 🔁 Replace with your secret's name
+                )
                 )
             ]
         )
