@@ -27,7 +27,8 @@ collection = mongo[DB_NAME][COLLECTION_NAME]
 
 # Init Kubernetes client
 config.load_incluster_config()
-batch_v1 = client.BatchV1Api()
+core_v1 = client.CoreV1Api()
+
 
 @kopf.on.startup()
 async def poll_loop(**_):
@@ -49,58 +50,51 @@ async def poll_loop(**_):
 
         await asyncio.sleep(30)
 
-
 def assign_and_spawn_worker(record):
     record_id = record["_id"]
-    job_id = str(uuid.uuid4())[:8]
-    job_name = f"mongo-worker-{job_id}"
+    pod_id = str(uuid.uuid4())[:8]
+    pod_name = f"mongo-worker-{pod_id}"
 
     # Atomically update status if still new
     result = collection.update_one(
         {"_id": record_id, "status": "new"},
-        {"$set": {"status": "assigned", "jobId": job_id}}
+        {"$set": {"status": "assigned", "podId": pod_id}}
     )
 
     if result.modified_count == 0:
         logger.warning(f"❌ Failed to claim record {record_id}, likely already taken.")
         return
 
-    logger.info(f"✅ Claimed record {record_id} for job {job_name}")
+    logger.info(f"✅ Claimed record {record_id} for pod {pod_name}")
 
-    # Define the Job
-    job = client.V1Job(
+    # Define the Pod
+    pod = client.V1Pod(
         metadata=client.V1ObjectMeta(
-            name=job_name,
+            name=pod_name,
             labels={"app": "mongo-worker"}
         ),
-        spec=client.V1JobSpec(
-            backoff_limit=2,
-            template=client.V1PodTemplateSpec(
-                metadata=client.V1ObjectMeta(labels={"app": "mongo-worker"}),
-                spec=client.V1PodSpec(
-                    restart_policy="Never",
-                    containers=[
-                        client.V1Container(
-                            name="worker",
-                            image=WORKER_IMAGE,
-                            image_pull_policy="Never",
-                            env=[
-                                client.V1EnvVar(name="RECORD_IDS", value=str(record_id)),
-                                client.V1EnvVar(name="JOB_ID", value=job_id),
-                                client.V1EnvVar(name="MONGO_URI", value=MONGO_URI),
-                                client.V1EnvVar(name="MONGO_DB", value=DB_NAME),
-                                client.V1EnvVar(name="MONGO_COLLECTION", value=COLLECTION_NAME),
-                            ]
-                        )
+        spec=client.V1PodSpec(
+            restart_policy="Never",
+            containers=[
+                client.V1Container(
+                    name="worker",
+                    image=WORKER_IMAGE,
+                    image_pull_policy="Never",
+                    env=[
+                        client.V1EnvVar(name="RECORD_IDS", value=str(record_id)),
+                        client.V1EnvVar(name="POD_ID", value=pod_id),
+                        client.V1EnvVar(name="MONGO_URI", value=MONGO_URI),
+                        client.V1EnvVar(name="MONGO_DB", value=DB_NAME),
+                        client.V1EnvVar(name="MONGO_COLLECTION", value=COLLECTION_NAME),
                     ]
                 )
-            )
+            ]
         )
     )
 
-    # Submit the Job
+    # Submit the Pod
     try:
-        batch_v1.create_namespaced_job(namespace=NAMESPACE, body=job)
-        logger.info(f"🚀 Spawned worker job: {job_name} for record {record_id}")
+        core_v1.create_namespaced_pod(namespace=NAMESPACE, body=pod)
+        logger.info(f"🚀 Spawned worker pod: {pod_name} for record {record_id}")
     except Exception as e:
-        logger.error(f"❌ Failed to create job {job_name}: {e}")
+        logger.error(f"❌ Failed to create pod {pod_name}: {e}")
