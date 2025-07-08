@@ -1,42 +1,49 @@
 #!/bin/bash
 
-NAMESPACE=default  # Change this if your pods are in a different namespace
+NAMESPACE=default
 TOTAL_DIFF=0
 COUNT=0
 
-echo "Fetching mongo-worker pod startup delays..."
+echo "Fetching mongo-worker pods in namespace: $NAMESPACE"
 
-# Get pods starting with mongo-worker
+# Get all pod names starting with mongo-worker
 PODS=$(oc get pods -n "$NAMESPACE" --no-headers | awk '/^mongo-worker/ {print $1}')
 
 for POD in $PODS; do
     echo "Processing pod: $POD"
-    DESCRIBE=$(oc describe pod "$POD" -n "$NAMESPACE")
+    EVENTS=$(oc describe pod "$POD" -n "$NAMESPACE" | awk '/^Events:/,/^$/')
 
-    SCHEDULED=$(echo "$DESCRIBE" | grep "Scheduled" | head -1 | awk '{print $(NF-1), $NF}')
-    STARTED=$(echo "$DESCRIBE" | grep "Started" | head -1 | awk '{print $(NF-1), $NF}')
+    # Extract Scheduled and Started timestamps
+    SCHEDULED_TIME=$(echo "$EVENTS" | grep 'Scheduled' | awk '{print $(NF-1)}' | head -n1)
+    STARTED_TIME=$(echo "$EVENTS" | grep 'Started' | awk '{print $(NF-1)}' | head -n1)
 
-    if [[ -z "$SCHEDULED" || -z "$STARTED" ]]; then
-        echo "  Skipping $POD due to missing times."
+    # Skip if any timestamp missing
+    if [[ -z "$SCHEDULED_TIME" || -z "$STARTED_TIME" ]]; then
+        echo "  Skipping $POD (missing Scheduled or Started)"
         continue
     fi
 
-    # Convert to epoch seconds
-    SCHED_EPOCH=$(date -d "$SCHEDULED" +%s)
-    START_EPOCH=$(date -d "$STARTED" +%s)
+    # Convert to epoch using `date -d`, works in Git Bash
+    SCHEDULED_EPOCH=$(date -d "$SCHEDULED_TIME" +%s 2>/dev/null)
+    STARTED_EPOCH=$(date -d "$STARTED_TIME" +%s 2>/dev/null)
 
-    DIFF=$((START_EPOCH - SCHED_EPOCH))
+    # Skip if time conversion failed
+    if [[ -z "$SCHEDULED_EPOCH" || -z "$STARTED_EPOCH" ]]; then
+        echo "  Skipping $POD (bad timestamp)"
+        continue
+    fi
 
-    echo "  Time diff (s): $DIFF"
+    DIFF=$((STARTED_EPOCH - SCHEDULED_EPOCH))
+    echo "  Time diff (Started - Scheduled): $DIFF sec"
 
     TOTAL_DIFF=$((TOTAL_DIFF + DIFF))
     COUNT=$((COUNT + 1))
 done
 
-if [ "$COUNT" -gt 0 ]; then
+echo "--------------------------------------------"
+if [[ $COUNT -gt 0 ]]; then
     AVG=$((TOTAL_DIFF / COUNT))
-    echo "---------------------------------"
-    echo "Average startup delay: $AVG seconds"
+    echo "Average startup delay across $COUNT pods: $AVG seconds"
 else
-    echo "No valid mongo-worker pods found."
+    echo "No valid mongo-worker pods found with both timestamps."
 fi
