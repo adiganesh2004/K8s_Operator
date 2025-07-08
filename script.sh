@@ -6,44 +6,60 @@ COUNT=0
 
 echo "Fetching mongo-worker pods in namespace: $NAMESPACE"
 
-# Get all pod names starting with mongo-worker
-PODS=$(oc get pods -n "$NAMESPACE" --no-headers | awk '/^mongo-worker/ {print $1}')
+# Get pods starting with mongo-worker
+PODS=$(kubectl get pods -n "$NAMESPACE" --no-headers | awk '/^mongo-worker/ {print $1}')
 
 for POD in $PODS; do
     echo "Processing pod: $POD"
-    EVENTS=$(oc describe pod "$POD" -n "$NAMESPACE" | awk '/^Events:/,/^$/')
+    EVENTS=$(kubectl describe pod "$POD" -n "$NAMESPACE")
 
-    # Extract Scheduled and Started timestamps
-    SCHEDULED_TIME=$(echo "$EVENTS" | grep 'Scheduled' | awk '{print $(NF-1)}' | head -n1)
-    STARTED_TIME=$(echo "$EVENTS" | grep 'Started' | awk '{print $(NF-1)}' | head -n1)
+    # Extract the Age values for Scheduled and Started
+    SCHEDULED_AGE=$(echo "$EVENTS" | awk '/Scheduled/ && !seen++ {print $(NF-2)}')
+    STARTED_AGE=$(echo "$EVENTS" | awk '/Started/ && !seen++ {print $(NF-2)}')
 
-    # Skip if any timestamp missing
-    if [[ -z "$SCHEDULED_TIME" || -z "$STARTED_TIME" ]]; then
-        echo "  Skipping $POD (missing Scheduled or Started)"
+    # Skip if either is missing
+    if [[ -z "$SCHEDULED_AGE" || -z "$STARTED_AGE" ]]; then
+        echo "  Skipping (missing Scheduled/Started age)"
         continue
     fi
 
-    # Convert to epoch using `date -d`, works in Git Bash
-    SCHEDULED_EPOCH=$(date -d "$SCHEDULED_TIME" +%s 2>/dev/null)
-    STARTED_EPOCH=$(date -d "$STARTED_TIME" +%s 2>/dev/null)
+    # Function to convert age (e.g., 4d2h, 1m20s) to seconds
+    age_to_seconds() {
+        local age="$1"
+        local total=0
+        if [[ "$age" =~ ([0-9]+)d ]]; then
+            total=$((total + ${BASH_REMATCH[1]} * 86400))
+        fi
+        if [[ "$age" =~ ([0-9]+)h ]]; then
+            total=$((total + ${BASH_REMATCH[1]} * 3600))
+        fi
+        if [[ "$age" =~ ([0-9]+)m ]]; then
+            total=$((total + ${BASH_REMATCH[1]} * 60))
+        fi
+        if [[ "$age" =~ ([0-9]+)s ]]; then
+            total=$((total + ${BASH_REMATCH[1]}))
+        fi
+        echo "$total"
+    }
 
-    # Skip if time conversion failed
-    if [[ -z "$SCHEDULED_EPOCH" || -z "$STARTED_EPOCH" ]]; then
-        echo "  Skipping $POD (bad timestamp)"
-        continue
+    SCHED_SECS=$(age_to_seconds "$SCHEDULED_AGE")
+    START_SECS=$(age_to_seconds "$STARTED_AGE")
+
+    DIFF=$((SCHED_SECS - START_SECS))
+    if (( DIFF < 0 )); then
+        DIFF=$(( -DIFF ))
     fi
 
-    DIFF=$((STARTED_EPOCH - SCHEDULED_EPOCH))
-    echo "  Time diff (Started - Scheduled): $DIFF sec"
+    echo "  Scheduled age: $SCHEDULED_AGE ($SCHED_SECS s), Started age: $STARTED_AGE ($START_SECS s), Diff: $DIFF s"
 
     TOTAL_DIFF=$((TOTAL_DIFF + DIFF))
     COUNT=$((COUNT + 1))
 done
 
-echo "--------------------------------------------"
+echo "---------------------------------------------------"
 if [[ $COUNT -gt 0 ]]; then
     AVG=$((TOTAL_DIFF / COUNT))
-    echo "Average startup delay across $COUNT pods: $AVG seconds"
+    echo "Average startup delay (Scheduled → Started): $AVG seconds across $COUNT pods"
 else
-    echo "No valid mongo-worker pods found with both timestamps."
+    echo "No valid mongo-worker pods found with event ages."
 fi
