@@ -1,0 +1,58 @@
+import pymongo
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+import os
+
+# MongoDB config
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+DB_NAME = os.getenv("MONGO_DB", "mydatabase")
+COLLECTION_NAME = os.getenv("MONGO_COLLECTION", "mycollection")
+
+# Connect to MongoDB
+client = pymongo.MongoClient(MONGO_URI)
+db = client[DB_NAME]
+collection = db[COLLECTION_NAME]
+
+# Fetch documents
+documents = list(collection.find({
+    "received_at": {"$exists": True},
+    "assigned_at": {"$exists": True},
+    "completed_at": {"$exists": True}
+}))
+
+# Parse and structure data
+data = []
+for doc in documents:
+    try:
+        received = pd.to_datetime(doc['received_at'])
+        assigned = pd.to_datetime(doc['assigned_at'])
+        completed = pd.to_datetime(doc['completed_at'])
+
+        data.append({
+            "received_at": received,
+            "assigned_at": assigned,
+            "completed_at": completed,
+            "processing_time_sec": (completed - received).total_seconds()
+        })
+    except Exception as e:
+        print(f"Skipping invalid document: {e}")
+
+# Create DataFrame
+df = pd.DataFrame(data)
+df.sort_values(by="received_at", inplace=True)
+
+# Plot timestamps
+plt.figure(figsize=(12, 6))
+plt.plot(df["received_at"], df["received_at"], label="Received At", marker='o')
+plt.plot(df["received_at"], df["assigned_at"], label="Assigned At", marker='s')
+plt.plot(df["received_at"], df["completed_at"], label="Completed At", marker='^')
+
+plt.xlabel("Received At (Timeline)")
+plt.ylabel("Timestamps")
+plt.title("Job Lifecycle: Received vs Assigned vs Completed")
+plt.legend()
+plt.grid(True)
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
