@@ -1,1 +1,1 @@
-<img width="1288" height="481" alt="New_operator" src="https://github.com/user-attachments/assets/a4e4c6ad-eaad-4864-90e3-3f46e76e3f9a" />
+<img width="1407" height="481" alt="New_operator(1)" src="https://github.com/user-attachments/assets/c59ac1d9-014a-4dcc-9d30-9ea0f963ef7b" />
