@@ -1,0 +1,61 @@
+import threading
+from kubernetes import client, config, watch
+
+# Load kube config
+try:
+    config.load_kube_config()
+except:
+    config.load_incluster_config()
+
+v1 = client.CoreV1Api()
+
+def update_failed_record(record_id, container_name, pod_name):
+    print(f"[THREAD] Updating record '{record_id}' assigned to failed container '{container_name}' in pod '{pod_name}'")
+    # Implement your DB update or error handling logic here
+    # e.g., db.update_one({"_id": record_id}, {"$set": {"status": "failed"}})
+    pass
+
+def extract_record_id_from_env(container_spec):
+    for env in container_spec.env or []:
+        if env.name == "RECORD_ID":
+            return env.value
+    return None
+
+def handle_failed_pod(pod):
+    pod_name = pod.metadata.name
+    namespace = pod.metadata.namespace
+
+    # Build a map of container name -> spec
+    container_spec_map = {c.name: c for c in pod.spec.containers}
+
+    for c_status in pod.status.container_statuses:
+        name = c_status.name
+        state = c_status.state
+
+        if state.terminated and state.terminated.exit_code != 0:
+            print(f"[FAIL] Container '{name}' in pod '{pod_name}' failed with exit code {state.terminated.exit_code}")
+
+            # Get the corresponding container spec
+            container_spec = container_spec_map.get(name)
+            record_id = extract_record_id_from_env(container_spec) or extract_record_id_from_args(container_spec)
+
+            if record_id:
+                thread = threading.Thread(target=update_failed_record, args=(record_id, name, pod_name))
+                thread.start()
+            else:
+                print(f"[WARN] Record ID not found in container '{name}'")
+
+print("[🔁] Watching for failed pods...")
+
+w = watch.Watch()
+try:
+    for event in w.stream(v1.list_pod_for_all_namespaces, timeout_seconds=0):
+        pod = event['object']
+        event_type = event['type']
+        
+        if pod.status.phase == "Failed" and event_type in ["MODIFIED", "ADDED"]:
+            handle_failed_pod(pod)
+except KeyboardInterrupt:
+    print("Interrupted.")
+finally:
+    w.stop()
